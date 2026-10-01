@@ -1,0 +1,514 @@
+openapi: 3.0.3
+
+info:
+  title: Calculate Service API
+  version: 1.0.0
+  description: |
+    Arithmetic operations over HTTP. Every operation is a `POST` with a JSON
+    object as the body and returns JSON.
+
+    Numbers are IEEE 754 64-bit floats. Results are returned as computed and
+    are not rounded, so `0.1 + 0.2` is `0.30000000000000004`.
+
+    Two responses apply to the whole service and are not repeated on each
+    operation:
+
+    - `404` with code `NOT_FOUND` for a path that does not exist.
+    - `405` with code `METHOD_NOT_ALLOWED` and an `Allow` header for a known
+      path called with the wrong method.
+
+    Requirements and acceptance scenarios are in `../spec.md`.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: operations
+    description: Arithmetic operations
+  - name: service
+    description: Service status
+
+paths:
+  /api/v1/add:
+    post:
+      tags: [operations]
+      operationId: add
+      summary: Add a list of numbers
+      requestBody:
+        $ref: '#/components/requestBodies/Numbers'
+      responses:
+        '200':
+          description: The sum of the numbers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: add
+                result: 6
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/OutOfRange'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/subtract:
+    post:
+      tags: [operations]
+      operationId: subtract
+      summary: Subtract from left to right
+      description: >-
+        Returns the first number minus each following number, in order.
+        `[10, 3, 2]` gives `10 - 3 - 2 = 5`.
+      requestBody:
+        $ref: '#/components/requestBodies/Numbers'
+      responses:
+        '200':
+          description: The difference.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: subtract
+                result: 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/OutOfRange'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/multiply:
+    post:
+      tags: [operations]
+      operationId: multiply
+      summary: Multiply a list of numbers
+      requestBody:
+        $ref: '#/components/requestBodies/Numbers'
+      responses:
+        '200':
+          description: The product of the numbers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: multiply
+                result: 24
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/OutOfRange'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/divide:
+    post:
+      tags: [operations]
+      operationId: divide
+      summary: Divide from left to right
+      description: >-
+        Returns the first number divided by each following number, in order.
+        `[100, 5, 2]` gives `100 / 5 / 2 = 10`. No number after the first may
+        be zero.
+      requestBody:
+        $ref: '#/components/requestBodies/Numbers'
+      responses:
+        '200':
+          description: The quotient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: divide
+                result: 10
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          description: >-
+            A divisor is zero (`DIVISION_BY_ZERO`) or the result is too large
+            (`RESULT_OUT_OF_RANGE`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                divisionByZero:
+                  value:
+                    error:
+                      code: DIVISION_BY_ZERO
+                      message: 'division by zero: numbers[2] is zero'
+                outOfRange:
+                  value:
+                    error:
+                      code: RESULT_OUT_OF_RANGE
+                      message: result is out of range
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/exponent:
+    post:
+      tags: [operations]
+      operationId: exponent
+      summary: Raise a base to an exponent
+      description: >-
+        `0` raised to `0` is `1`. Zero cannot be raised to a negative
+        exponent, and a negative base cannot be raised to a fractional
+        exponent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExponentRequest'
+            example:
+              base: 2
+              exponent: 10
+      responses:
+        '200':
+          description: The base raised to the exponent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: exponent
+                result: 1024
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          description: >-
+            Zero raised to a negative exponent (`DIVISION_BY_ZERO`), a
+            negative base with a fractional exponent (`UNDEFINED_RESULT`), or
+            a result that is too large (`RESULT_OUT_OF_RANGE`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                divisionByZero:
+                  value:
+                    error:
+                      code: DIVISION_BY_ZERO
+                      message: 'division by zero: zero cannot be raised to a negative exponent'
+                undefinedResult:
+                  value:
+                    error:
+                      code: UNDEFINED_RESULT
+                      message: 'result is undefined: a negative base with a fractional exponent has no real result'
+                outOfRange:
+                  value:
+                    error:
+                      code: RESULT_OUT_OF_RANGE
+                      message: result is out of range
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/square_root:
+    post:
+      tags: [operations]
+      operationId: squareRoot
+      summary: Square root of a number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SquareRootRequest'
+            example:
+              number: 9
+      responses:
+        '200':
+          description: The non-negative square root.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: square_root
+                result: 3
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          description: The number is negative (`NEGATIVE_SQUARE_ROOT`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: NEGATIVE_SQUARE_ROOT
+                  message: 'square root of a negative number: -4'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/percentage:
+    post:
+      tags: [operations]
+      operationId: percentage
+      summary: Percentage of a total
+      description: >-
+        Returns the percentage of `total` that `value` represents, where
+        `total` is 100%. A negative `value`, or a `value` greater than
+        `total`, is valid and gives a result below 0 or above 100.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PercentageRequest'
+            example:
+              value: 25
+              total: 200
+      responses:
+        '200':
+          description: The percentage.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              example:
+                operation: percentage
+                result: 12.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          description: >-
+            The total is zero (`DIVISION_BY_ZERO`) or the result is too large
+            (`RESULT_OUT_OF_RANGE`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                divisionByZero:
+                  value:
+                    error:
+                      code: DIVISION_BY_ZERO
+                      message: 'division by zero: total is zero'
+                outOfRange:
+                  value:
+                    error:
+                      code: RESULT_OUT_OF_RANGE
+                      message: result is out of range
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /health:
+    get:
+      tags: [service]
+      operationId: health
+      summary: Health check
+      responses:
+        '200':
+          description: The service is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+              example:
+                status: ok
+
+components:
+  requestBodies:
+    Numbers:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NumbersRequest'
+          example:
+            numbers: [10, 3, 2]
+
+  schemas:
+    NumbersRequest:
+      type: object
+      additionalProperties: false
+      required: [numbers]
+      properties:
+        numbers:
+          type: array
+          description: The operands, applied from left to right.
+          minItems: 2
+          maxItems: 1000
+          items:
+            type: number
+            format: double
+
+    ExponentRequest:
+      type: object
+      additionalProperties: false
+      required: [base, exponent]
+      properties:
+        base:
+          type: number
+          format: double
+        exponent:
+          type: number
+          format: double
+
+    SquareRootRequest:
+      type: object
+      additionalProperties: false
+      required: [number]
+      properties:
+        number:
+          type: number
+          format: double
+          minimum: 0
+
+    PercentageRequest:
+      type: object
+      additionalProperties: false
+      required: [value, total]
+      properties:
+        value:
+          type: number
+          format: double
+          description: The amount whose percentage is wanted.
+        total:
+          type: number
+          format: double
+          description: The amount that represents 100%. Must not be zero.
+
+    Result:
+      type: object
+      required: [operation, result]
+      properties:
+        operation:
+          type: string
+          description: The operation that was performed.
+          enum: [add, subtract, multiply, divide, exponent, square_root, percentage]
+        result:
+          type: number
+          format: double
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable identifier that clients may branch on.
+              enum:
+                - INVALID_JSON
+                - VALIDATION_ERROR
+                - NOT_FOUND
+                - METHOD_NOT_ALLOWED
+                - PAYLOAD_TOO_LARGE
+                - UNSUPPORTED_MEDIA_TYPE
+                - DIVISION_BY_ZERO
+                - NEGATIVE_SQUARE_ROOT
+                - UNDEFINED_RESULT
+                - RESULT_OUT_OF_RANGE
+                - INTERNAL_ERROR
+            message:
+              type: string
+              description: Explanation for people. The wording may change.
+
+  responses:
+    BadRequest:
+      description: >-
+        The body is not a single well-formed JSON object with correctly typed
+        values (`INVALID_JSON`), or a field is missing, `null`, unknown, or
+        outside its allowed size (`VALIDATION_ERROR`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidJson:
+              value:
+                error:
+                  code: INVALID_JSON
+                  message: request body is not valid JSON
+            validationError:
+              value:
+                error:
+                  code: VALIDATION_ERROR
+                  message: field "numbers" must contain at least 2 numbers, got 1
+
+    PayloadTooLarge:
+      description: The body is larger than 1 MiB.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: PAYLOAD_TOO_LARGE
+              message: request body must not exceed 1048576 bytes
+
+    UnsupportedMediaType:
+      description: The `Content-Type` header is not `application/json`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: UNSUPPORTED_MEDIA_TYPE
+              message: Content-Type must be application/json
+
+    OutOfRange:
+      description: The result is too large for a 64-bit float.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: RESULT_OUT_OF_RANGE
+              message: result is out of range
+
+    InternalError:
+      description: An unexpected failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: an unexpected error occurred
