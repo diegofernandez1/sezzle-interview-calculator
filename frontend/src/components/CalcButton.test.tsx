@@ -75,10 +75,4 @@ describe('CalcButton', () => {
 
     expect(button).toBeInTheDocument();
   });
-
-  it('FR-031 covers the columns and rows it is given', () => {
-    const { button } = setup({ ...divide, columns: 2, rows: 2 });
-
-    expect(button).toHaveStyle({ gridColumn: 'span 2', gridRow: 'span 2' });
-  });
 });

@@ -39,10 +39,6 @@ export function CalcButton({ keyDef, onPress, disabled = false }: CalcButtonProp
       // A mouse click must not leave focus on the button: Enter would then
       // press it again instead of evaluating. Tab focus is unaffected.
       onMouseDown={(event) => event.preventDefault()}
-      style={{
-        gridColumn: keyDef.columns ? `span ${keyDef.columns}` : undefined,
-        gridRow: keyDef.rows ? `span ${keyDef.rows}` : undefined,
-      }}
       sx={(theme) => ({
         minWidth: 0,
         minHeight: 52,

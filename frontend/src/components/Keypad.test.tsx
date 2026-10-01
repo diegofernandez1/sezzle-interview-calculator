@@ -32,6 +32,8 @@ describe('Keypad', () => {
     'equals',
     'backspace',
     'clear',
+    'move cursor left',
+    'move cursor right',
   ])('AC-048 has a button named %s', (name) => {
     const { group } = setup();
 
@@ -49,8 +51,8 @@ describe('Keypad', () => {
       ...['(', ')', '% of', '⌫', 'AC'],
       ...['7', '8', '9', '÷', '√'],
       ...['4', '5', '6', '×', 'xʸ'],
-      ...['1', '2', '3', '−', '='],
-      ...['0', '.', '+'],
+      ...['1', '2', '3', '−', '+'],
+      ...['0', '.', '◀', '▶', '='],
     ]);
   });
 

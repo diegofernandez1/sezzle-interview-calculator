@@ -84,12 +84,31 @@ The reducer in `state.ts` applies the input rules of FR-004 to FR-009 and FR-019
 ```ts
 interface CalculatorState {
   tokens: Token[];
+  cursor: number;            // how many items are left of the cursor
   previous: string | null;   // the last evaluated expression, shown above the result
   error: string | null;
   pending: boolean;          // an evaluation is in progress
   evaluated: boolean;        // the tokens are a result that has not been edited
 }
 ```
+
+## Cursor
+
+The cursor is a number: how many items of the expression are on its left (FR-038). An item is what the cursor steps over in one move. A typed number is one item per character, so the cursor can go inside it; every other token, and a carried result, is one item. `format.ts` produces the display text as a list of items (`formatUnits`), and the display draws the caret between two of them.
+
+Editing at the cursor reuses the input rules, which were written for the end of the expression:
+
+1. **Split** the tokens at the cursor into a left part and a right part. A cursor inside a typed number splits that number in two.
+2. **Edit** the left part with the same function that applied the rules before the cursor existed. To that function the cursor is simply the end of the expression.
+3. **Join**: after an insertion, look at the two tokens that now meet. An operator meeting an operator drops the one on the right. An operand meeting an operand gets a `×` between them, unless both are typed numbers (FR-042).
+4. **Normalize** the whole list: two typed numbers side by side become one number, keeping one decimal point (FR-041), and each minus becomes a subtraction or a negative sign according to what is on its left (FR-043).
+5. The new cursor is the number of items in the edited left part.
+
+Because step 2 is unchanged, typing at the end behaves exactly as before, and the earlier tests pass untouched.
+
+An edit in the middle can leave something the parser rejects, such as `2(3)`. The reducer does not try to prevent every such case; the parser is the single judge of validity and reports it on equals (FR-044).
+
+In the display, each item is a `span`. A click on one compares the pointer's x position with the middle of the span to choose the side (FR-039). After every change of text or cursor, the caret element is scrolled into view with `scrollIntoView({ inline: 'nearest' })`, which keeps the cursor visible in a long expression (FR-036).
 
 ## Parsing
 
@@ -156,14 +175,14 @@ Buttons call `preventDefault` on `mousedown`, which stops a click from moving fo
 
 ### Keypad layout
 
-Five columns. Equals spans two rows; zero spans two columns.
+Five columns and five rows, one button per cell.
 
 ```text
 (     )     % of   ⌫     AC
 7     8     9      ÷     √
 4     5     6      ×     xʸ
-1     2     3      −     =
-0     0     .      +     =
+1     2     3      −     +
+0     .     ◀      ▶     =
 ```
 
 ### Appearance
@@ -187,7 +206,7 @@ The layout adapts with CSS media queries only; no JavaScript measures the screen
 The display (FR-036, FR-037):
 
 - The expression is one line with a fixed height. Its font size is chosen from three steps by the length of the text, so the display never changes height.
-- The line scrolls sideways when the text is still too wide. A layout effect sets `scrollLeft` to the end after every change. The scrollbar is hidden; touch and trackpad scrolling still work.
+- The line scrolls sideways when the text is still too wide. A layout effect scrolls the caret into view after every change. The scrollbar is hidden; touch and trackpad scrolling still work.
 - The message is allowed to wrap.
 
 ## Testing
@@ -216,4 +235,5 @@ The display (FR-036, FR-037):
 | FR-031 | `theme.ts`, `components/` |
 | FR-034, FR-035 | Media queries in `App.tsx`, `components/Calculator.tsx`, `components/CalcButton.tsx`, `components/Display.tsx` |
 | FR-036, FR-037 | `components/Display.tsx` |
+| FR-038 to FR-045 | `calculator/state.ts`, `calculator/format.ts`, `calculator/keys.ts`, `components/Display.tsx` |
 | FR-032, FR-033 | `api/calculatorApi.ts`, `vite.config.ts` |

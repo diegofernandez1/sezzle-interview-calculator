@@ -34,7 +34,7 @@ Out of scope: calculation history beyond the last expression, memory keys, scien
 | --- | --- |
 | FR-001 | The keypad has a button for each digit `0` to `9` and for the decimal point. |
 | FR-002 | The keypad has a button for each operation of the service: add (`+`), subtract (`−`), multiply (`×`), divide (`÷`), exponent (`xʸ`), square root (`√`), and percentage (`% of`). |
-| FR-003 | The keypad has buttons for open and close parentheses, equals (`=`), backspace (`⌫`), and clear (`AC`). |
+| FR-003 | The keypad has buttons for open and close parentheses, equals (`=`), backspace (`⌫`), clear (`AC`), and moving the cursor left (`◀`) and right (`▶`). |
 
 ### Building an expression
 
@@ -104,6 +104,8 @@ Out of scope: calculation history beyond the last expression, memory keys, scien
 | `Enter` or `=` | Equals |
 | `Backspace` | Backspace |
 | `Escape` or `Delete` | Clear |
+| `ArrowLeft` and `ArrowRight` | Move the cursor one item |
+| `Home` and `End` | Move the cursor to the start and to the end |
 
 ### Accessibility and appearance
 
@@ -121,8 +123,23 @@ Out of scope: calculation history beyond the last expression, memory keys, scien
 | --- | --- |
 | FR-034 | The display and every button are visible without scrolling on screens from 320 px wide and from 320 px high. This is checked at 320 × 568, 375 × 667, 667 × 375, and 568 × 320. |
 | FR-035 | On a narrow screen the calculator fills the width. On a short screen the buttons are shorter and the keyboard hint is hidden. On a screen that is short and wide, such as a phone held sideways, the display sits beside the keypad instead of above it. |
-| FR-036 | The display shows the expression on one line and always shows its end, where the person is typing. The text has three sizes: large up to 10 characters, medium up to 16, and small beyond that. An expression still too long for the line can be scrolled sideways, and the line returns to its end after each input. |
+| FR-036 | The display shows the expression on one line and always shows the cursor, where the person is typing. The text has three sizes: large up to 10 characters, medium up to 16, and small beyond that. An expression still too long for the line can be scrolled sideways, and the line returns to the cursor after each input. |
 | FR-037 | A message too long for one line of the display wraps onto the next line; it is never cut off. |
+
+### Cursor
+
+The cursor is the place in the expression where input goes. It sits between two items, where an item is one digit or decimal point of a typed number, one operator, one parenthesis, one square root sign, one negative sign, or a whole carried result.
+
+| ID | Requirement |
+| --- | --- |
+| FR-038 | The display shows the cursor as a vertical bar. It starts at the end of the expression and returns to the end after an evaluation and after clear. |
+| FR-039 | The keypad has buttons to move the cursor one item left (`◀`) and right (`▶`). The keys `ArrowLeft`, `ArrowRight`, `Home`, and `End` move it left, right, to the start, and to the end. Clicking or tapping an item in the display puts the cursor beside it, on the side that was clicked; clicking the empty part of the line puts it at the end. The cursor does not move past either end. |
+| FR-040 | Digits, the decimal point, operators, parentheses, and square root are inserted at the cursor. The rules of FR-004 to FR-008 apply to what is left of the cursor. An operator inserted inside a number splits it into two numbers. |
+| FR-041 | Backspace removes the item left of the cursor. When this leaves two typed numbers side by side, they join into one number; a second decimal point is dropped. |
+| FR-042 | An insertion never leaves two operators or two operands side by side at the cursor: an operator typed directly before another operator replaces it, and an operand typed directly before another operand gets a `×` between them. |
+| FR-043 | A minus is a subtraction when an operand is on its left and a negative sign otherwise. It changes between the two when an edit changes what is on its left. |
+| FR-044 | Editing in the middle can leave an expression that cannot be evaluated, such as `2(3)` after its `×` is removed. Equals then shows `Incomplete expression`, as in FR-016. |
+| FR-045 | Moving the cursor is ignored while an evaluation is in progress. It does not remove an error message. |
 
 ### Service access
 
@@ -273,8 +290,32 @@ AC-058 checks the standard order of arithmetic on expressions that mix levels: p
 | ID | When | Then |
 | --- | --- | --- |
 | AC-055 | The expression is `1234567890` (10 characters); then `12345678901` (11); then `1234567890 + 12` (15); then `1234567890 + 123456` (19) | The text size is large; medium; medium; small |
-| AC-056 | The expression is wider than the display and a character is added | The line is scrolled to its end |
+| AC-056 | The expression is wider than the display and a character is added or the cursor moves | The line is scrolled to bring the cursor into view |
 | AC-057 | The message is `Can't take the square root of a negative number` | The message is allowed to wrap |
+
+### Cursor (FR-038 to FR-045)
+
+In the "Then" column, `‸` marks where the cursor is.
+
+| ID | When | Then |
+| --- | --- | --- |
+| AC-059 | `1 2 + 3`; and separately nothing is pressed | The display shows `12 + 3‸`; and `0‸` |
+| AC-060 | `1 2 + 3 ◀ ◀`, then `5` | `12‸ + 3`, then `125‸ + 3` |
+| AC-061 | `1 2 3 ◀`, then `+` | `12‸3`, then `12 + ‸3` |
+| AC-062 | `1 2 3 ◀ ⌫`; and separately `1 2 + 3 ◀ ⌫` | `1‸3`; and `12‸3` |
+| AC-063 | `1 . 2 + 3 . 4 ◀ ◀ ◀ ⌫` | `1.2‸34` |
+| AC-064 | `1 2 ◀ ◀ ◀`; and `1 2 ▶`; and `1 2 ◀ ◀ ⌫` | `‸12`; `12‸`; `‸12` |
+| AC-065 | The keys `1` `2` `3`, then `ArrowLeft` twice, `ArrowRight`, `Home`, `End` | `1‸23` after the two left arrows, then `12‸3`, `‸123`, `123‸` |
+| AC-066 | `1 2 + 3`, then the `+` in the display is clicked on its left half; and on its right half; and the empty part of the line is clicked | `12‸ + 3`; `12 + ‸3`; `12 + 3‸` |
+| AC-067 | `2 + 3 ◀ ◀`, then `×` | `2 × ‸3` |
+| AC-068 | `( 2 )`, then `Home`, then `5` | `5‸ × (2)` |
+| AC-069 | `2 × − 3 ◀ ◀ ⌫ =` | The display shows `2‸ − 3` before `=`; the request is subtract `[2, 3]`; the result is `−1` |
+| AC-070 | `1 2 + 3 ◀ ◀ 5 =` | The request is add `[125, 3]`; the result is `128‸` |
+| AC-071 | `2 ( 3 )`, then `◀ ◀ ◀ ⌫ =` | The display shows `2‸(3)`; the message is `Incomplete expression`; no request |
+| AC-072 | `2 + 3 = ◀`, then `7`; and separately `2 + 3 = ◀`, then `×` | `7‸`; and `5 × ‸` |
+| AC-073 | `1 ÷ 0 =`, then `◀` | The message `Can't divide by zero` is still shown |
+| AC-074 | An evaluation is in progress and `ArrowLeft` is pressed | The cursor does not move |
+| AC-075 | The application is open | The keypad has buttons named `move cursor left` and `move cursor right` |
 
 FR-034 and FR-035 depend on the size of the screen, which the test environment does not lay out. They are verified in a real browser at the four sizes of FR-034; the results are recorded in [tasks.md](tasks.md).
 

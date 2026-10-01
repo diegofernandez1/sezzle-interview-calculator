@@ -25,11 +25,23 @@ const NAMES: Record<string, string> = {
   '=': 'equals',
   '⌫': 'backspace',
   AC: 'clear',
+  '◀': 'move cursor left',
+  '▶': 'move cursor right',
 };
 
 const button = (label: string) => screen.getByRole('button', { name: NAMES[label] ?? label });
 const calculator = () => screen.getByRole('region', { name: 'Calculator' });
-const display = () => screen.getByRole('status').textContent;
+const display = () => screen.getByRole('status').textContent.trim();
+
+/** The display text with `‸` where the cursor is, as written in the spec. */
+function displayWithCursor() {
+  const line = screen.getByRole('status');
+  const caret = within(line).getByTestId('caret');
+  caret.textContent = '‸';
+  const text = line.textContent;
+  caret.textContent = '';
+  return text;
+}
 const message = () => screen.queryByRole('alert')?.textContent ?? null;
 const idle = () => waitFor(() => expect(calculator()).toHaveAttribute('aria-busy', 'false'));
 
@@ -489,5 +501,135 @@ describe('accessibility', () => {
     setup();
 
     expect(screen.getByText(/Enter/)).toBeInTheDocument();
+  });
+});
+
+describe('cursor', () => {
+  it('AC-059 starts at the end of the expression', async () => {
+    const { press } = setup();
+
+    expect(displayWithCursor()).toBe('0‸');
+    await press('1 2 + 3');
+
+    expect(displayWithCursor()).toBe('12 + 3‸');
+  });
+
+  it.each([
+    ['AC-060', '1 2 + 3 ◀ ◀', '12‸ + 3'],
+    ['AC-060', '1 2 + 3 ◀ ◀ 5', '125‸ + 3'],
+    ['AC-061', '1 2 3 ◀', '12‸3'],
+    ['AC-061', '1 2 3 ◀ +', '12 + ‸3'],
+    ['AC-062', '1 2 3 ◀ ⌫', '1‸3'],
+    ['AC-062', '1 2 + 3 ◀ ⌫', '12‸3'],
+    ['AC-063', '1 . 2 + 3 . 4 ◀ ◀ ◀ ⌫', '1.2‸34'],
+    ['AC-064', '1 2 ◀ ◀ ◀', '‸12'],
+    ['AC-064', '1 2 ▶', '12‸'],
+    ['AC-064', '1 2 ◀ ◀ ⌫', '‸12'],
+    ['AC-067', '2 + 3 ◀ ◀ ×', '2 × ‸3'],
+    ['AC-072', '2 + 3 = ◀ 7', '7‸'],
+    ['AC-072', '2 + 3 = ◀ ×', '5 × ‸'],
+  ])('%s pressing %s shows %s', async (_id, labels, shown) => {
+    const { press } = setup();
+
+    await press(labels);
+
+    expect(displayWithCursor()).toBe(shown);
+  });
+
+  it('AC-065 the arrow, Home, and End keys move the cursor', async () => {
+    const { type } = setup();
+
+    await type('123{ArrowLeft}{ArrowLeft}');
+    expect(displayWithCursor()).toBe('1‸23');
+    await type('{ArrowRight}');
+    expect(displayWithCursor()).toBe('12‸3');
+    await type('{Home}');
+    expect(displayWithCursor()).toBe('‸123');
+    await type('{End}');
+    expect(displayWithCursor()).toBe('123‸');
+  });
+
+  it('AC-066 a click in the display places the cursor', async () => {
+    const { press, user } = setup();
+    await press('1 2 + 3');
+    const plus = screen.getByText('+', { selector: '[data-unit]' });
+    // jsdom does no layout, so give the item a position and a width.
+    plus.getBoundingClientRect = () => ({ left: 100, width: 20 }) as DOMRect;
+
+    await user.pointer({ target: plus, coords: { clientX: 105 }, keys: '[MouseLeft]' });
+    expect(displayWithCursor()).toBe('12‸ + 3');
+
+    await user.pointer({ target: plus, coords: { clientX: 115 }, keys: '[MouseLeft]' });
+    expect(displayWithCursor()).toBe('12 + ‸3');
+
+    await press('◀ ◀');
+    await user.click(screen.getByRole('status'));
+    expect(displayWithCursor()).toBe('12 + 3‸');
+  });
+
+  it('AC-068 an operand typed before a group is multiplied with it', async () => {
+    const { press, type } = setup();
+
+    await press('( 2 )');
+    await type('{Home}5');
+
+    expect(displayWithCursor()).toBe('5‸ × (2)');
+  });
+
+  it('AC-069 a negative sign becomes a subtraction when its operator is removed', async () => {
+    const { press, calls } = setup();
+
+    await press('2 × − 3 ◀ ◀ ⌫');
+    expect(displayWithCursor()).toBe('2‸ − 3');
+    await press('=');
+
+    expect(calls).toEqual([['subtract', [2, 3]]]);
+    expect(display()).toBe('−1');
+  });
+
+  it('AC-070 an edited expression is what gets evaluated', async () => {
+    const { press, calls } = setup();
+
+    await press('1 2 + 3 ◀ ◀ 5 =');
+
+    expect(calls).toEqual([['add', [125, 3]]]);
+    expect(displayWithCursor()).toBe('128‸');
+  });
+
+  it('AC-071 an edit that breaks the expression is reported on equals', async () => {
+    const { press, calls } = setup();
+
+    await press('2 ( 3 ) ◀ ◀ ◀ ⌫');
+    expect(displayWithCursor()).toBe('2‸(3)');
+    await press('=');
+
+    expect(message()).toBe('Incomplete expression');
+    expect(calls).toEqual([]);
+  });
+
+  it('AC-073 moving the cursor keeps the message', async () => {
+    const { press } = setup();
+
+    await press('1 ÷ 0 = ◀');
+
+    expect(message()).toBe("Can't divide by zero");
+    expect(displayWithCursor()).toBe('1 ÷ ‸0');
+  });
+
+  it('AC-074 the cursor does not move while waiting', async () => {
+    const { user } = setup({ add: () => new Promise<number>(() => {}) });
+
+    await user.keyboard('2+3{Enter}');
+    expect(calculator()).toHaveAttribute('aria-busy', 'true');
+    await user.keyboard('{ArrowLeft}{Home}');
+
+    expect(displayWithCursor()).toBe('2 + 3‸');
+  });
+
+  it('AC-075 has buttons to move the cursor', () => {
+    setup();
+
+    expect(button('◀')).toHaveAccessibleName('move cursor left');
+    expect(button('▶')).toHaveAccessibleName('move cursor right');
   });
 });

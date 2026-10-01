@@ -20,7 +20,7 @@ const SHORT = '@media (max-height: 620px)';
 
 /** The calculator: a display and a keypad, usable with mouse, touch, or keyboard. */
 export function Calculator({ api = calculatorApi }: CalculatorProps) {
-  const { expression, previous, error, pending, press } = useCalculator(api);
+  const { units, cursor, previous, error, pending, press } = useCalculator(api);
   useKeyboard(press);
 
   return (
@@ -49,7 +49,14 @@ export function Calculator({ api = calculatorApi }: CalculatorProps) {
           [SHORT_AND_WIDE]: { gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr)' },
         }}
       >
-        <Display expression={expression} previous={previous} error={error} pending={pending} />
+        <Display
+          units={units}
+          cursor={cursor}
+          previous={previous}
+          error={error}
+          pending={pending}
+          onPlaceCursor={(position) => press({ type: 'placeCursor', position })}
+        />
         <Keypad onPress={press} disabled={pending} />
       </Box>
 
@@ -60,6 +67,7 @@ export function Calculator({ api = calculatorApi }: CalculatorProps) {
         sx={{ mt: 2, mb: 0, [SHORT]: { display: 'none' } }}
       >
         You can type: Enter for =, Backspace for ⌫, Esc for AC, r for √, ^ for xʸ, and % for % of.
+        The arrow keys, or a click in the display, move the cursor.
         “25 % of 200” gives 12.5, because 25 is 12.5% of 200.
       </Typography>
     </Paper>

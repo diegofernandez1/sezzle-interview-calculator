@@ -35,12 +35,17 @@ describe('KEYPAD', () => {
     expect(byName.get('clear')?.action).toEqual({ type: 'clear' });
   });
 
-  it('AC-048 has 23 buttons with unique names and labels', () => {
+  it('AC-075 has buttons that move the cursor', () => {
+    expect(byName.get('move cursor left')?.action).toEqual({ type: 'moveCursor', to: 'left' });
+    expect(byName.get('move cursor right')?.action).toEqual({ type: 'moveCursor', to: 'right' });
+  });
+
+  it('AC-048 has 25 buttons with unique names and labels', () => {
     // 10 digits, the decimal point, 7 operations, 2 parentheses, equals,
-    // backspace, and clear.
-    expect(KEYPAD).toHaveLength(23);
-    expect(new Set(KEYPAD.map((key) => key.name)).size).toBe(23);
-    expect(new Set(KEYPAD.map((key) => key.label)).size).toBe(23);
+    // backspace, clear, and 2 cursor buttons: a full grid of 5 by 5.
+    expect(KEYPAD).toHaveLength(25);
+    expect(new Set(KEYPAD.map((key) => key.name)).size).toBe(25);
+    expect(new Set(KEYPAD.map((key) => key.label)).size).toBe(25);
   });
 
   it('FR-025 gives every button a keyboard key that does the same thing', () => {
@@ -75,11 +80,15 @@ describe('keyToAction', () => {
     ['Backspace', { type: 'backspace' }],
     ['Escape', { type: 'clear' }],
     ['Delete', { type: 'clear' }],
+    ['ArrowLeft', { type: 'moveCursor', to: 'left' }],
+    ['ArrowRight', { type: 'moveCursor', to: 'right' }],
+    ['Home', { type: 'moveCursor', to: 'start' }],
+    ['End', { type: 'moveCursor', to: 'end' }],
   ])('AC-044 maps %s', (key, action) => {
     expect(keyToAction(key)).toEqual(action);
   });
 
-  it.each(['a', 'Tab', 'Shift', ' ', 'ArrowLeft', 'F5'])('FR-025 ignores %s', (key) => {
+  it.each(['a', 'Tab', 'Shift', ' ', 'ArrowUp', 'F5'])('FR-025 ignores %s', (key) => {
     expect(keyToAction(key)).toBeNull();
   });
 });

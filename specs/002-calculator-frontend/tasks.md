@@ -41,6 +41,16 @@ Added to confirm FR-011 with expressions that mix every level. No code changed; 
 
 - [x] T016b Add AC-058 to `spec.md` and its 24 expressions to `evaluate.test.ts`, with a selection in `Calculator.test.tsx` and `live.integration.test.ts`. (FR-011)
 
+## Phase 5c: Cursor
+
+Added after a change to the spec: FR-038 to FR-045 and AC-059 to AC-075.
+
+- [x] T016c Add the requirements and scenarios to `spec.md` and the design to `plan.md`.
+- [x] T016d Track the cursor in `state.ts` and edit at it; split the display text into items in `format.ts`. (FR-038, FR-040 to FR-045)
+- [x] T016e Add the `◀` and `▶` buttons and the arrow, Home, and End keys in `keys.ts`. The keypad becomes a full 5 by 5 grid; `0` and `=` no longer span two cells. (FR-039)
+- [x] T016f Draw the caret in `Display.tsx`, place it on click, and keep it in view. (FR-036, FR-038, FR-039)
+- [x] T016g Write the cursor tests in `state.test.ts`, `Display.test.tsx`, `Calculator.test.tsx`, `keys.test.ts`, and `useKeyboard.test.tsx`.
+
 ## Phase 6: Documentation
 
 - [x] T017 Add the frontend to the root `README.md`.
@@ -58,19 +68,19 @@ Recorded on 2026-09-30 with Node 22.14, Vitest 5, React 19, and MUI 9.
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | No errors |
-| `npm test` | 411 test cases pass; the 21 live-service cases are skipped |
-| `CALC_SERVICE_URL=... npm test` | 432 test cases pass, including 21 against the running service |
-| Coverage | 100% of statements, lines, and functions; 98.4% of branches |
-| Acceptance scenarios with a test | 58 of 58 |
+| `npm test` | 492 test cases pass; the 21 live-service cases are skipped |
+| `CALC_SERVICE_URL=... npm test` | 513 test cases pass, including 21 against the running service |
+| Coverage | 100% of statements, lines, and functions; 99.2% of branches |
+| Acceptance scenarios with a test | 75 of 75 |
 | `npm run build` | Succeeds |
 
-The three uncovered branches are defensive: a service error without a message text, a parser failure that is not an incomplete expression, and the same check in the service client.
+The two uncovered branches are defensive: a service error without a message text, and a parser failure that is not an incomplete expression.
 
 ### Real browser
 
-The application was opened in headless Chrome from the Vite dev server, with the real calculate service behind the proxy. At each screen size the keys `2+3*4 Enter`, a 36-character expression, and `r-4 Enter` were typed, and the page was measured.
+The application was opened in headless Chrome from the Vite dev server, with the real calculate service behind the proxy. At each screen size the keys `2+3*4 Enter`, a 36-character expression, and `r-4 Enter` were typed, and the page was measured. The run was repeated after the cursor was added; the table shows that run.
 
-| Screen | Scheme | Layout | Display and all 23 buttons in view | Page scrolls | Smallest button | `2 + 3 × 4` | End of long expression in view | Long message fully visible |
+| Screen | Scheme | Layout | Display and all 25 buttons in view | Page scrolls | Smallest button | `2 + 3 × 4` | End of long expression in view | Long message fully visible |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 320 × 568 | Light | Stacked | Yes | No | 50 × 47 px | `14` | Yes | Yes, on two lines |
 | 375 × 667 | Dark | Stacked | Yes | No | 61 × 52 px | `14` | Yes | Yes |
@@ -78,6 +88,16 @@ The application was opened in headless Chrome from the Vite dev server, with the
 | 568 × 320 | Dark | Side by side | Yes | No | 56 × 36 px | `14` | Yes | Yes, on two lines |
 
 This also confirms the dev-server proxy, the light and dark schemes, and keyboard input in a real browser.
+
+The cursor was checked in the same run, at each of the four sizes:
+
+| Step | Result |
+| --- | --- |
+| Nothing entered | `0‸` |
+| Keys `12+3`, `ArrowLeft` twice, `5` | `125‸ + 3` |
+| Mouse click on the right half of the `+` | `125 + ‸3` |
+| `Enter` | `128‸` |
+| 36-character expression, then `Home` | The line scrolled back to its start; the caret was in view |
 
 Not checked: a physical phone, browsers other than Chrome, and a screen reader.
 
@@ -123,4 +143,12 @@ Tests are in `frontend/src/`, beside the files they test. Test case names start 
 | FR-036 Long expressions | AC-055, AC-056 | `Display.test.tsx`; real browser |
 | FR-037 Long messages | AC-057 | `Display.test.tsx`; real browser |
 | NFR-002 Tests for every file | | 15 test files: one beside each source file, plus the live-service test |
-| NFR-003 Test names carry scenario IDs | | All 58 scenario IDs appear in test case names |
+| FR-038 Cursor shown | AC-059 | `state.test.ts`, `Display.test.tsx`, `Calculator.test.tsx`; real browser |
+| FR-039 Moving the cursor | AC-064 to AC-066, AC-075 | `state.test.ts`, `keys.test.ts`, `useKeyboard.test.tsx`, `Display.test.tsx`, `Keypad.test.tsx`, `Calculator.test.tsx`; real browser |
+| FR-040 Inserting at the cursor | AC-060, AC-061, AC-070 | `state.test.ts`, `Calculator.test.tsx` |
+| FR-041 Backspace at the cursor | AC-062, AC-063 | `state.test.ts`, `Calculator.test.tsx` |
+| FR-042 Neighbors at the cursor | AC-067, AC-068 | `state.test.ts`, `Calculator.test.tsx` |
+| FR-043 Minus by context | AC-069 | `state.test.ts`, `Calculator.test.tsx` |
+| FR-044 Broken expressions | AC-071 | `state.test.ts`, `Calculator.test.tsx` |
+| FR-045 Cursor while waiting or after an error | AC-072 to AC-074 | `state.test.ts`, `Calculator.test.tsx` |
+| NFR-003 Test names carry scenario IDs | | All 75 scenario IDs appear in test case names |

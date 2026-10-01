@@ -11,9 +11,6 @@ export interface KeyDef {
   action: Action;
   /** The keyboard key that does the same thing. */
   shortcut: string;
-  /** How many grid columns or rows the button covers, when more than one. */
-  columns?: number;
-  rows?: number;
 }
 
 const digit = (d: string): KeyDef => ({
@@ -38,8 +35,8 @@ const operator = (label: string, name: string, op: BinaryOp, shortcut: string): 
  *   (     )     % of   ⌫     AC
  *   7     8     9      ÷     √
  *   4     5     6      ×     xʸ
- *   1     2     3      −     =
- *   0     0     .      +     =
+ *   1     2     3      −     +
+ *   0     .     ◀      ▶     =
  */
 export const KEYPAD: KeyDef[] = [
   { label: '(', name: 'open parenthesis', kind: 'operator', action: { type: 'lparen' }, shortcut: '(' },
@@ -64,11 +61,25 @@ export const KEYPAD: KeyDef[] = [
   digit('2'),
   digit('3'),
   operator('−', 'subtract', 'subtract', '-'),
-  { label: '=', name: 'equals', kind: 'equals', action: { type: 'equals' }, shortcut: 'Enter', rows: 2 },
-
-  { ...digit('0'), columns: 2 },
-  { label: '.', name: 'decimal point', kind: 'digit', action: { type: 'decimal' }, shortcut: '.' },
   operator('+', 'add', 'add', '+'),
+
+  digit('0'),
+  { label: '.', name: 'decimal point', kind: 'digit', action: { type: 'decimal' }, shortcut: '.' },
+  {
+    label: '◀',
+    name: 'move cursor left',
+    kind: 'operator',
+    action: { type: 'moveCursor', to: 'left' },
+    shortcut: 'ArrowLeft',
+  },
+  {
+    label: '▶',
+    name: 'move cursor right',
+    kind: 'operator',
+    action: { type: 'moveCursor', to: 'right' },
+    shortcut: 'ArrowRight',
+  },
+  { label: '=', name: 'equals', kind: 'equals', action: { type: 'equals' }, shortcut: 'Enter' },
 ];
 
 const KEYBOARD: Record<string, Action> = {
@@ -91,6 +102,10 @@ const KEYBOARD: Record<string, Action> = {
   Backspace: { type: 'backspace' },
   Escape: { type: 'clear' },
   Delete: { type: 'clear' },
+  ArrowLeft: { type: 'moveCursor', to: 'left' },
+  ArrowRight: { type: 'moveCursor', to: 'right' },
+  Home: { type: 'moveCursor', to: 'start' },
+  End: { type: 'moveCursor', to: 'end' },
 };
 
 /** The action for a keyboard key (`KeyboardEvent.key`), or null if it has none. */

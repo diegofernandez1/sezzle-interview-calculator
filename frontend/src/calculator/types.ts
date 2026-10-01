@@ -25,7 +25,10 @@ export type Action =
   | { type: 'rparen' }
   | { type: 'backspace' }
   | { type: 'clear' }
-  | { type: 'equals' };
+  | { type: 'equals' }
+  | { type: 'moveCursor'; to: 'left' | 'right' | 'start' | 'end' }
+  // `position` counts the items left of the cursor; see `formatUnits`.
+  | { type: 'placeCursor'; position: number };
 
 /** A parsed expression. Each node other than `number` is one service call. */
 export type Node =

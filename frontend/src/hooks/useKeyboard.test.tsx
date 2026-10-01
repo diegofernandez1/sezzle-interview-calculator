@@ -58,6 +58,19 @@ describe('useKeyboard', () => {
     expect(onAction.mock.calls).toEqual([[{ type: 'backspace' }], [{ type: 'clear' }], [{ type: 'clear' }]]);
   });
 
+  it('AC-065 reports the arrow, Home, and End keys as cursor moves', async () => {
+    const { onAction, user } = setup();
+
+    await user.keyboard('{ArrowLeft}{ArrowRight}{Home}{End}');
+
+    expect(onAction.mock.calls.map(([action]) => action)).toEqual([
+      { type: 'moveCursor', to: 'left' },
+      { type: 'moveCursor', to: 'right' },
+      { type: 'moveCursor', to: 'start' },
+      { type: 'moveCursor', to: 'end' },
+    ]);
+  });
+
   it('AC-047 leaves keys pressed with Ctrl, Meta, or Alt to the browser', async () => {
     const { onAction, user } = setup();
 
@@ -69,7 +82,7 @@ describe('useKeyboard', () => {
   it('FR-025 ignores keys that have no button', async () => {
     const { onAction, user } = setup();
 
-    await user.keyboard('a{Tab}{ArrowLeft} ');
+    await user.keyboard('a{Tab}{ArrowUp} ');
 
     expect(onAction).not.toHaveBeenCalled();
   });

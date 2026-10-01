@@ -2,6 +2,24 @@
 
 A calculator application, built spec-first.
 
+## Quick start
+
+With Docker installed, run this one command from the repository root. It builds and starts both the calculate service and the calculator frontend:
+
+```sh
+docker compose up --build
+```
+
+Then open <http://localhost:3000>.
+
+To stop it, press Ctrl+C and run:
+
+```sh
+docker compose down
+```
+
+Ports, background mode, and running without Compose are covered in [Run with Docker](#run-with-docker). To run the projects directly on your machine for development, see [Run without Docker](#run-without-docker).
+
 ## Layout
 
 | Folder | Contents |
@@ -398,10 +416,25 @@ Build an expression with the buttons or the keyboard, then press `=`.
 | `% of` | `%` | What percentage the left side is of the right side: `25 % of 200` is `12.5` |
 | `(` and `)` | `(` and `)` | Parentheses |
 | `=` | `Enter` or `=` | Evaluate |
-| `⌫` | `Backspace` | Remove the last digit or item |
+| `⌫` | `Backspace` | Remove the digit or item left of the cursor |
+| `◀` and `▶` | `ArrowLeft` and `ArrowRight` | Move the cursor one step |
+| | `Home` and `End` | Move the cursor to the start and to the end |
 | `AC` | `Escape` or `Delete` | Clear everything |
 
 Keys work without clicking anything first. Buttons can also be reached with Tab and pressed with Enter or Space.
+
+### Editing with the cursor
+
+The blue bar in the display is the cursor: what you type goes there, and backspace removes what is on its left. It starts at the end. Move it with the `◀` and `▶` buttons, with the arrow, Home, and End keys, or by clicking or tapping the place in the display where you want it.
+
+| Starting from | Do this | You get |
+| --- | --- | --- |
+| `12 + 3` | Move left twice, press `5` | `125 + 3` |
+| `123` | Move left once, press `+` | `12 + 3` |
+| `12 + 3` | Move left once, press `⌫` | `123` |
+| `2 + 3` | Move to just after the `2`, press `×` | `2 × 3` |
+
+The cursor can go inside a number you typed. An operator typed next to another operator replaces it. If an edit leaves something that cannot be calculated, `=` shows `Incomplete expression` and you can keep editing.
 
 After a result, pressing an operator continues from that result, pressing a digit starts again, and pressing `√` takes the square root of the result.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { typed } from '../test/tokens';
+import { typed, withCursor } from '../test/tokens';
 import { formatTokens } from './format';
 import { initialState, reducer, type CalculatorState } from './state';
 
@@ -276,5 +276,101 @@ describe('errors', () => {
   it('AC-039 removes the message when a new evaluation starts', () => {
     const failed = fail(typed('10/0'), "Can't divide by zero");
     expect(reducer(failed, { type: 'evaluationStarted' }).error).toBeNull();
+  });
+});
+
+// In `typed`, < and > move the cursor, [ and ] send it to the start and the
+// end, and ~ is backspace. `withCursor` shows the display with ‸ at the cursor.
+describe('cursor', () => {
+  it.each([
+    ['AC-059 starts at the end', '12+3', '12 + 3‸'],
+    ['AC-059 starts at the end of nothing', '', '0‸'],
+    ['AC-060 moves left over an item at a time', '12+3<<', '12‸ + 3'],
+    ['AC-060 inserts a digit at the cursor', '12+3<<5', '125‸ + 3'],
+    ['AC-061 goes inside a number', '123<', '12‸3'],
+    ['AC-061 splits a number with an operator', '123<+', '12 + ‸3'],
+    ['AC-062 removes the digit left of the cursor', '123<~', '1‸3'],
+    ['AC-062 joins two numbers when their operator is removed', '12+3<~', '12‸3'],
+    ['AC-063 drops the second decimal point when numbers join', '1.2+3.4<<<~', '1.2‸34'],
+    ['AC-064 stops at the start', '12<<<', '‸12'],
+    ['AC-064 stops at the end', '12>', '12‸'],
+    ['AC-064 has nothing to remove at the start', '12<<~', '‸12'],
+    ['AC-065 moves left', '123<<', '1‸23'],
+    ['AC-065 moves right', '123<<>', '12‸3'],
+    ['AC-065 jumps to the start', '123[', '‸123'],
+    ['AC-065 jumps to the end', '123[]', '123‸'],
+    ['AC-067 replaces the operator right of the cursor', '2+3<<*', '2 × ‸3'],
+    ['AC-068 multiplies an operand typed before a group', '(2)[5', '5‸ × (2)'],
+    ['AC-069 turns a negative sign into a subtraction', '2*-3<<~', '2‸ − 3'],
+    ['AC-071 can leave an expression that cannot be evaluated', '2(3)<<<~', '2‸(3)'],
+    ['FR-040 inserts a decimal point inside a number', '125<.', '12.‸5'],
+    ['FR-040 allows one decimal point when inserting', '1.25<.', '1.2‸5'],
+    ['FR-040 inserts a square root before a number', '9[r', '√‸9'],
+    ['FR-040 inserts a parenthesis before a number', '2+3<(', '2 + (‸3'],
+    ['FR-041 removes an operator as one item', '2%3<~', '2‸3'],
+    ['FR-042 multiplies an operand typed before a square root', 'r9[2', '2‸ × √9'],
+    ['FR-042 multiplies after a parenthesis closed before a number', '(23<)', '(2)‸ × 3'],
+    ['FR-043 turns a subtraction into a negative sign', '2-3<<~', '‸−3'],
+    ['FR-043 turns a negative sign into a subtraction', '-3[2', '2‸ − 3'],
+  ])('%s: %s', (_rule, keys, shown) => {
+    expect(withCursor(typed(keys))).toBe(shown);
+  });
+
+  it('AC-064 returns the same state when the cursor cannot move', () => {
+    const atEnd = typed('12');
+    expect(typed('>', atEnd)).toBe(atEnd);
+    const atStart = typed('12[');
+    expect(typed('<', atStart)).toBe(atStart);
+  });
+
+  it('AC-066 places the cursor at a position, within the expression', () => {
+    const state = typed('12+3');
+    const at = (position: number) => withCursor(reducer(state, { type: 'placeCursor', position }));
+
+    expect(at(2)).toBe('12‸ + 3');
+    expect(at(3)).toBe('12 + ‸3');
+    expect(at(0)).toBe('‸12 + 3');
+    expect(at(99)).toBe('12 + 3‸');
+    expect(at(-5)).toBe('‸12 + 3');
+  });
+
+  it('AC-070 puts the cursor at the end of a result', () => {
+    const state = succeed(typed('12+3<<5'), 128);
+    expect(withCursor(state)).toBe('128‸');
+  });
+
+  it('AC-072 treats a result the same wherever the cursor is', () => {
+    const moved = typed('<', succeed(typed('2+3'), 5));
+    expect(withCursor(moved)).toBe('‸5');
+    expect(moved.evaluated).toBe(true);
+    expect(withCursor(typed('7', moved))).toBe('7‸');
+    expect(withCursor(typed('*', moved))).toBe('5 × ‸');
+    expect(withCursor(typed('r', moved))).toBe('√5‸');
+  });
+
+  it('AC-072 steps over a carried result as one item', () => {
+    const carried = typed('+5', succeed(typed('3-10'), -7));
+    expect(withCursor(typed('[>', carried))).toBe('−7‸ + 5');
+    // An operand typed before it is multiplied with it; the two never join.
+    expect(withCursor(typed('[4', carried))).toBe('4‸ × −7 + 5');
+  });
+
+  it('AC-073 keeps the message when only the cursor moves', () => {
+    const failed = fail(typed('1/0'), "Can't divide by zero");
+    const moved = typed('<', failed);
+    expect(moved.error).toBe("Can't divide by zero");
+    expect(withCursor(moved)).toBe('1 ÷ ‸0');
+    expect(reducer(failed, { type: 'placeCursor', position: 0 }).error).toBe("Can't divide by zero");
+  });
+
+  it('AC-074 ignores cursor moves while pending', () => {
+    const started = reducer(typed('2+3'), { type: 'evaluationStarted' });
+    expect(typed('<', started)).toBe(started);
+    expect(typed('[', started)).toBe(started);
+    expect(reducer(started, { type: 'placeCursor', position: 0 })).toBe(started);
+  });
+
+  it('AC-012 clear returns the cursor to the start of an empty expression', () => {
+    expect(reducer(typed('12+3<<'), { type: 'clear' })).toEqual(initialState);
   });
 });

@@ -1,6 +1,6 @@
 import { useCallback, useReducer } from 'react';
 import { evaluate } from '../calculator/evaluate';
-import { formatTokens } from '../calculator/format';
+import { formatTokens, formatUnits } from '../calculator/format';
 import { errorMessage } from '../calculator/messages';
 import { ExpressionError, parse } from '../calculator/parser';
 import { initialState, reducer } from '../calculator/state';
@@ -9,6 +9,10 @@ import type { Action, CalculatorApi, Node } from '../calculator/types';
 export interface Calculator {
   /** The expression being entered, or the result, as display text. */
   expression: string;
+  /** The same text split into the items the cursor steps over. */
+  units: string[];
+  /** How many items are left of the cursor. */
+  cursor: number;
   /** The last evaluated expression, shown above its result. */
   previous: string | null;
   /** The message of the last failure. */
@@ -54,6 +58,8 @@ export function useCalculator(api: CalculatorApi): Calculator {
 
   return {
     expression: formatTokens(state.tokens),
+    units: formatUnits(state.tokens),
+    cursor: state.cursor,
     previous: state.previous,
     error: state.error,
     pending: state.pending,
