@@ -109,6 +109,9 @@ export function Display({ units, cursor, previous, error, pending, onPlaceCursor
       <Typography
         role="status"
         aria-live="polite"
+        // Firefox puts scrollable elements in the Tab order. The line needs no
+        // focus, because the cursor keys work from anywhere.
+        tabIndex={-1}
         data-size={size}
         // A click on the empty part of the line puts the cursor at the end.
         onClick={() => onPlaceCursor?.(units.length)}

@@ -113,9 +113,9 @@ Out of scope: calculation history beyond the last expression, memory keys, scien
 | --- | --- |
 | FR-027 | Every button has an accessible name that says what it does, such as `divide` for `÷`. The keypad is a labelled group. |
 | FR-028 | The display value is a status region, so a result is announced. An error is an alert. |
-| FR-029 | Buttons are reachable with Tab and activated with Enter or Space. When a button has focus, Enter activates that button once and does not also evaluate. |
+| FR-029 | Buttons are reachable with Tab and activated with Enter or Space. When a button has focus, Enter activates that button once and does not also evaluate. Tab moves between the buttons only; the display is not a Tab stop in any browser. |
 | FR-030 | Clicking a button with the mouse does not move focus to it, so pressing Enter afterwards evaluates. |
-| FR-031 | The layout follows the calculator shown in a Google search: a rounded card, a right-aligned display, and a grid of rounded buttons with digits, operators, and equals in three distinct colors. It follows the system light or dark setting. |
+| FR-031 | The layout follows the calculator shown in a Google search: a rounded card, a right-aligned display, and a grid of rounded buttons with digits, operators, and equals in three distinct colors. It follows the system light or dark setting. Text meets the WCAG 2.1 AA contrast ratio of 4.5 to 1 in both. |
 
 ### Responsive layout
 

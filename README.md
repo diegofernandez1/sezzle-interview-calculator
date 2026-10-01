@@ -20,6 +20,14 @@ docker compose down
 
 Ports, background mode, and running without Compose are covered in [Run with Docker](#run-with-docker). To run the projects directly on your machine for development, see [Run without Docker](#run-without-docker).
 
+## Tests at a glance
+
+| Suite | Where | Command | What it is |
+| --- | --- | --- | --- |
+| Service tests | `backend/calculate-service` | `go test ./... -race -cover` | Go tests of the arithmetic and the HTTP API. See [Test](#test) |
+| Frontend unit tests | `frontend` | `npm test` | Vitest and React Testing Library, for every component, hook, and module. See [Frontend tests](#frontend-tests) |
+| End-to-end tests | `frontend` | `npm run e2e` | Playwright, in Chromium, Firefox, and WebKit, against the real service. See [End-to-End Tests (Playwright)](#end-to-end-tests-playwright) |
+
 ## Layout
 
 | Folder | Contents |
@@ -27,6 +35,7 @@ Ports, background mode, and running without Compose are covered in [Run with Doc
 | [specs/](specs/) | Specifications. Each feature has a numbered folder with its requirements, API contract, design, and tasks |
 | [backend/calculate-service/](backend/calculate-service/) | Go microservice that does the arithmetic over HTTP |
 | [frontend/](frontend/) | React single-page application: the calculator people use |
+| [frontend/e2e/](frontend/e2e/) | End-to-end tests of the whole application, written with Playwright |
 | [docker-compose.yml](docker-compose.yml) | Builds and runs both projects in containers |
 
 ## How work is done here
@@ -49,6 +58,7 @@ The spec is the source of truth. If the code and the spec disagree, fix the code
 | [001 Calculate Service](specs/001-calculate-service/spec.md) | Implemented |
 | [002 Calculator Frontend](specs/002-calculator-frontend/spec.md) | Implemented |
 | [003 Containers](specs/003-containers/spec.md) | Implemented |
+| [004 End-to-End Tests](specs/004-end-to-end-tests/spec.md) | Implemented |
 
 ## Run with Docker
 
@@ -488,6 +498,9 @@ Run these in `frontend/`.
 | `npm test` | Runs the tests once |
 | `npm run test:watch` | Runs the tests on every change |
 | `npm run coverage` | Runs the tests and reports coverage |
+| `npm run e2e` | Runs the [end-to-end tests](#end-to-end-tests-playwright) in real browsers; starts the service and the frontend itself |
+| `npm run e2e:ui` | Opens Playwright's interactive runner |
+| `npm run e2e:report` | Opens the report of the last end-to-end run |
 | `npm run typecheck` | Checks the types |
 | `npm run build` | Type checks, then builds for production into `dist/` |
 | `npm run preview` | Serves the production build |
@@ -531,3 +544,128 @@ To include the live-service tests, start the service and run:
 ```sh
 CALC_SERVICE_URL=http://localhost:8080 npm test
 ```
+
+## End-to-End Tests (Playwright)
+
+The end-to-end tests open the calculator in real browsers, use it as a person does, and check both what is on screen and what is sent to the service. They are written with [Playwright](https://playwright.dev) and use the real calculate service. The requirements, design, and recorded results are in [specs/004-end-to-end-tests](specs/004-end-to-end-tests/).
+
+### Run the end-to-end tests
+
+One-time setup, in `frontend/`:
+
+```sh
+npm install
+npx playwright install chromium firefox webkit
+```
+
+Then:
+
+```sh
+npm run e2e
+```
+
+Nothing needs to be running first. Playwright starts the calculate service on port 18080 and the frontend on port 15173, runs the tests, and stops both. Go must be installed, because the service is started with `go run`.
+
+The suite has 373 tests: 123 in each of Chromium, Firefox, and WebKit, and 4 touch tests on a phone-sized screen. A run takes about a minute and a half.
+
+```sh
+npx playwright test --project=firefox        # one browser
+npx playwright test -g AC-016                # the tests for one scenario
+npx playwright test --headed                 # watch the browser
+npm run e2e:ui                               # interactive runner, with time travel
+npm run e2e:report                           # open the report of the last run
+```
+
+To test the Docker containers instead, start them and give their address. Playwright then starts nothing itself:
+
+```sh
+docker compose up --build -d --wait
+E2E_BASE_URL=http://localhost:3000 npm run e2e
+```
+
+### What the end-to-end tests cover
+
+| File | What it covers |
+| --- | --- |
+| [e2e/operations.spec.ts](frontend/e2e/operations.spec.ts) | Each of the seven operations; chained expressions, with the requests sent and their order |
+| [e2e/results-and-errors.spec.ts](frontend/e2e/results-and-errors.spec.ts) | Results and continuing from them; every error message; an unreachable service; input disabled while waiting |
+| [e2e/keyboard-and-cursor.spec.ts](frontend/e2e/keyboard-and-cursor.spec.ts) | Every key; moving the cursor by button, key, click, and tap; editing in the middle |
+| [e2e/accessibility-and-layout.spec.ts](frontend/e2e/accessibility-and-layout.spec.ts) | Names and roles; Tab and Enter; an automated WCAG 2.1 AA scan in light and dark; four phone screen sizes |
+
+Each test name starts with the acceptance scenario of [spec 002](specs/002-calculator-frontend/spec.md) it verifies, such as `AC-016 multiplication before addition`.
+
+### How the end-to-end tests are built
+
+```text
+frontend/
+├── playwright.config.ts          browsers, servers to start, what to keep on failure
+└── e2e/
+    ├── calculatorPage.ts         the page as a person uses it; shared by every test
+    └── *.spec.ts                 the tests
+```
+
+**Configuration.** [playwright.config.ts](frontend/playwright.config.ts) defines four projects and two servers:
+
+| Project | Runs | Purpose |
+| --- | --- | --- |
+| `chromium`, `firefox`, `webkit` | Every test not tagged `@touch` | The same behavior in the three browser engines |
+| `mobile` | The tests tagged `@touch` | A Pixel 7 profile: small screen and touch input |
+
+| Server | Command | Port | Ready when |
+| --- | --- | --- | --- |
+| Calculate service | `go run ./cmd/server` in `backend/calculate-service` | 18080 | `/health` answers |
+| Frontend | `npm run dev` | 15173 | The page answers |
+
+The ports differ from the usual 8080 and 5173, so a run does not collide with servers you started by hand. When `E2E_BASE_URL` is set, no server is started.
+
+**Page object.** [calculatorPage.ts](frontend/e2e/calculatorPage.ts) holds everything the tests know about the page. Each test receives it as a fixture named `calculator`, with a freshly loaded page, so tests do not depend on each other. A test then reads like the scenario it verifies:
+
+```ts
+import { expect, test } from './calculatorPage';
+
+test('AC-016 multiplication before addition', async ({ calculator }) => {
+  await calculator.press('2 + 3 × 4 =');
+
+  await expect(calculator.display).toHaveText('14');
+  expect(calculator.calls).toEqual([
+    { operation: 'multiply', body: { numbers: [3, 4] } },
+    { operation: 'add', body: { numbers: [2, 12] } },
+  ]);
+});
+```
+
+| Member | What it does |
+| --- | --- |
+| `press('2 + 3 =')` | Clicks keypad buttons by their labels, separated by spaces, and waits for each evaluation to finish |
+| `tap(...)` | The same with touch taps |
+| `type('2+3')`, `key('Enter')` | Keyboard input with nothing focused |
+| `display`, `message`, `keypad` | The display line, the error message, and the button group, found by role |
+| `button('×')` | One keypad button, found by its accessible name |
+| `calls` | Every request the page sent to the service, in order, read from the real network traffic |
+| `expectCursor('12‸ + 3')` | Checks the display text and where the cursor is |
+
+Elements are found by role and name, the way a screen reader finds them, never by CSS class. Tests wait for what they expect to appear; none waits for a fixed time.
+
+**Real service, with three exceptions.** Requests go to the real service, so a test that checks a request and a result checks the whole path. Three situations cannot be produced by the real service and use Playwright's request routing instead:
+
+| Situation | How it is produced |
+| --- | --- |
+| The service cannot be reached | The request is aborted |
+| An unexpected response | The response is replaced with a `500`, an unknown error code, an HTML error page, or a success without a result |
+| A slow response | The request is held until the test releases it, then continues to the real service |
+
+**Accessibility scan.** `@axe-core/playwright` runs the axe rules for WCAG 2.1 levels A and AA on the empty calculator, a result, and an error message, in light and in dark. Any violation fails the test and names the rule.
+
+**Responsive layout.** The layout tests set the screen size themselves, to 320 × 568, 375 × 667, 667 × 375, 568 × 320, and a desktop size, and check that the display and every button are in view, that the page does not scroll, and that a long expression keeps its cursor in view.
+
+**Failures.** For a failing test, Playwright keeps a trace, a screenshot, and a video in `frontend/test-results/` and links them from the report. Open the report with `npm run e2e:report`, or a single trace with `npx playwright show-trace <path to trace.zip>`.
+
+### Add an end-to-end test
+
+1. Add or find the scenario in [spec 002](specs/002-calculator-frontend/spec.md); the test name starts with its ID.
+2. Add a `test(...)` to the `*.spec.ts` file for that area, importing `test` and `expect` from `./calculatorPage`.
+3. Use `calculator.press`, `calculator.type`, and the locators above. Add a helper to `calculatorPage.ts` if several tests need the same new step.
+4. Tag a test `@touch` to run it only on the phone profile.
+5. Run it with `npx playwright test -g "<part of the name>"`.
+
+One test is skipped in WebKit: moving between buttons with Tab. Safari does that only with a macOS setting turned on, so the test would check the setting and not the application.

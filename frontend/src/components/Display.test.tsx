@@ -51,6 +51,12 @@ describe('Display', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
   });
 
+  it('AC-050 is not a Tab stop', () => {
+    render(<Display {...idle} {...typed('12')} />);
+
+    expect(screen.getByRole('status')).toHaveAttribute('tabindex', '-1');
+  });
+
   it('AC-049 shows a message as an alert', () => {
     render(<Display {...idle} units={['1', ' ÷ ', '0']} cursor={3} error="Can't divide by zero" />);
 

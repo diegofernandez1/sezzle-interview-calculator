@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 // In development the browser calls /api on the dev server, which forwards the
 // request to the calculate service. No CORS setup is needed.
@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // The end-to-end tests in e2e/ belong to Playwright: `npm run e2e`.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     coverage: {
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/test/**', 'src/**/*.test.{ts,tsx}', 'src/**/*.d.ts'],

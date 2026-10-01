@@ -68,8 +68,8 @@ Recorded on 2026-09-30 with Node 22.14, Vitest 5, React 19, and MUI 9.
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | No errors |
-| `npm test` | 492 test cases pass; the 21 live-service cases are skipped |
-| `CALC_SERVICE_URL=... npm test` | 513 test cases pass, including 21 against the running service |
+| `npm test` | 493 test cases pass; the 21 live-service cases are skipped |
+| `CALC_SERVICE_URL=... npm test` | 514 test cases pass, including 21 against the running service |
 | Coverage | 100% of statements, lines, and functions; 99.2% of branches |
 | Acceptance scenarios with a test | 75 of 75 |
 | `npm run build` | Succeeds |
@@ -99,7 +99,7 @@ The cursor was checked in the same run, at each of the four sizes:
 | `Enter` | `128‸` |
 | 36-character expression, then `Home` | The line scrolled back to its start; the caret was in view |
 
-Not checked: a physical phone, browsers other than Chrome, and a screen reader.
+Not checked: a physical phone and a screen reader. Firefox and WebKit, and these screen-size checks as repeatable tests, are covered by the end-to-end suite of [spec 004](../004-end-to-end-tests/tasks.md), which replaced the one-off script used here.
 
 ## Traceability
 

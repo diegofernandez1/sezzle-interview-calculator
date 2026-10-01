@@ -20,6 +20,8 @@ export const theme = createTheme({
     dark: {
       palette: {
         primary: { main: '#8ab4f8' },
+        // MUI's default dark red has a contrast of 4.37 on the card; AA needs 4.5.
+        error: { main: '#f28b82' },
         background: { default: '#17181a', paper: '#202124' },
       },
     },
