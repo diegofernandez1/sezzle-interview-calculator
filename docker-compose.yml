@@ -1,0 +1,37 @@
+# Runs the whole application: the calculate service and the calculator
+# frontend.
+#
+#   docker compose up --build     build and start; open http://localhost:3000
+#   docker compose down           stop and remove
+#
+# Change the host ports with FRONTEND_PORT and BACKEND_PORT:
+#
+#   FRONTEND_PORT=3100 BACKEND_PORT=8180 docker compose up --build
+
+name: sezzle-calculator
+
+services:
+  calculate-service:
+    build: ./backend/calculate-service
+    environment:
+      PORT: "8080"
+      # The browser reaches the service through the frontend, on one origin,
+      # so CORS is not involved. This only matters for other callers.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+    ports:
+      # Published so the service can also be called directly, for example
+      # with the curl commands in the README.
+      - "${BACKEND_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      # Where nginx forwards /api: the service, by its name on the Compose network.
+      CALC_SERVICE_URL: http://calculate-service:8080
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      calculate-service:
+        condition: service_healthy
+    restart: unless-stopped
